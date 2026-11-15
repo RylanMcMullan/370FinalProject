@@ -1,0 +1,1 @@
+"""Local encrypted password manager."""
