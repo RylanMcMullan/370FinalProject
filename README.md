@@ -1,10 +1,23 @@
-# 370 Final Project
-A final project for CNIT 370 at Purdue University.
+# Local Password Manager
 
-Track A: AI-Assisted Development of Cryptographic Tools
+A small Python password manager for Windows, with a command-line menu and local encrypted vault storage. A standalone executable is a packaging goal after the Python application works reliably.
 
-# Project Title
-AI-Assisted Development and Security Evaluation of a Simple Password Manager
+## Planned features
+- Create an encrypted vault protected by a master password.
+- Unlock, view, add, and delete saved credential entries.
+- Generate random passwords with user-selectable settings.
+- Save the vault locally and reopen it in later sessions.
+- Handle incorrect master passwords and invalid or damaged vault data appropriately.
 
-# Project Description
-For this project we will be creating a simple password manager using Python with the help of AI. The program will allow users to securely store and manage their passwords using a master password. We plan to use AES-GCM encryption to protect the stored passwords and prevent unauthorized access. We will also test the program to make sure it works correctly and use AI to help identify any security issues or vulnerabilities.
+## Planned design
+- **Key derivation:** Argon2id with a per-vault random salt; choose and document practical parameters.
+- **Vault encryption:** AES-256-GCM using a unique nonce for each encryption with a given key.
+- **Password generation:** Python's `secrets` module.
+- **Dependencies:** Prefer maintained, established libraries; do not implement cryptographic primitives from scratch.
+- **Scope:** Local, single-user application; no accounts, synchronization service, cloud backend, or external database required.
+
+## Security goal
+Protect the confidentiality and integrity of stored credentials if someone obtains a copy of the locked vault file but does not know the master password. Compromise of the running, unlocked computer is outside this primary threat model.
+
+## Status
+Design established; implementation not yet started. See `docs/CURRENT_STATE.md` once development begins.
