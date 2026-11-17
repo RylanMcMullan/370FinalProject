@@ -54,15 +54,23 @@ def _generate() -> str | None:
             if answer not in ("", "y", "yes", "n", "no"):
                 raise ValueError("Answer y or n for each character group.")
             choices.append(answer not in ("n", "no"))
-        minimum = sum(choices)
-        if not minimum:
+        if not any(choices):
             raise ValueError("Select at least one character group.")
-        length = int(input(f"Password length in characters ({minimum}-1024, Enter = 20): ") or "20")
-        return generate_password(length, lowercase=choices[0], uppercase=choices[1],
-                                 digits=choices[2], symbols=choices[3])
     except ValueError as exc:
         print(exc)
         return None
+    while True:
+        answer = input("Password length in characters (4-20, Enter = 20): ").strip()
+        try:
+            length = int(answer) if answer else 20
+        except ValueError:
+            print("Enter a whole number from 4 to 20, or press Enter for 20.")
+            continue
+        try:
+            return generate_password(length, lowercase=choices[0], uppercase=choices[1],
+                                     digits=choices[2], symbols=choices[3])
+        except ValueError as exc:
+            print(exc)
 
 
 def _menu(vault: Vault) -> None:
@@ -80,9 +88,9 @@ def _menu(vault: Vault) -> None:
             index = _select_entry(vault)
             if index is not None:
                 entry = vault.entries[index]
-                print(f"Entry label: {entry['name']}\nUsername or email: {entry['username']}\nPassword: {entry['password']}")
+                print(f"Name of user: {entry['name']}\nUsername or email: {entry['username']}\nPassword: {entry['password']}")
         elif choice == "3":
-            name = input("Entry label (e.g., Email or School): ").strip()
+            name = input("Name of user (not the login username): ").strip()
             username = input("Username or email for this entry: ")
             password = getpass("Password for this entry (Enter to generate): ")
             if not password:
@@ -165,13 +173,15 @@ def main(argv: list[str] | None = None) -> int:
                         return 1
         else:
             print(f"Creating vault: {args.vault}")
-            password = getpass("New master password: ")
-            if not password:
-                print("Master password cannot be empty.")
-                return 1
-            if password != getpass("Confirm master password: "):
-                print("Passwords do not match.")
-                return 1
+            while True:
+                password = getpass("New master password: ")
+                if not password:
+                    print("Master password cannot be empty. Please try again.")
+                    continue
+                if password != getpass("Confirm master password: "):
+                    print("Passwords did not match. Please try again.")
+                    continue
+                break
             vault = Vault.create(args.vault, password)
             print("Vault created.")
         _menu(vault)

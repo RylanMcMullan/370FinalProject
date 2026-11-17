@@ -24,8 +24,8 @@ def generate_password(
     ]
     if not groups:
         raise ValueError("Select at least one character group.")
-    if length < len(groups) or length > 1024:
-        raise ValueError(f"Length must be between {len(groups)} and 1024.")
+    if length < 4 or length > 20:
+        raise ValueError("Password length must be between 4 and 20 characters.")
     alphabet = "".join(groups)
     chars = [secrets.choice(group) for group in groups]
     chars.extend(secrets.choice(alphabet) for _ in range(length - len(groups)))

@@ -1,12 +1,23 @@
 # Decisions
 
+## 2026-11-17 — Follow-up usability fixes
+
+The owner explicitly requested these interface changes on 2026-11-17. No cryptographic design change was requested or made.
+
+| Choice | Rationale |
+| --- | --- |
+| Repeat both master password setup fields after a mismatch or empty password | Keeps the creation flow open and makes the correction path clear. Closing the program still stops setup. |
+| Fix generated password length at 4–20 characters for every character selection, with Enter choosing 20 | Applies the owner's requested range consistently to standalone generation and generation while adding an entry. |
+| Retry only the length after an invalid length entry | Preserves the user's chosen character groups. |
+| Label the stored `name` field as the user's name in the CLI | Distinguishes it from the login username without changing vault format or existing entries. |
+
 ## 2026-11-17 — Requested CLI changes
 
 The owner explicitly requested clearer prompts, three unlock attempts, a countdown before closing, and a confirmed vault reset. These changes were authorized in the 2026-11-17 request. The owner clarified that Esc after the third failed unlock should stop automatic closing while leaving the vault locked, with manual closing required.
 
 | Choice | Rationale |
 | --- | --- |
-| Show selected character groups before asking for length | The minimum valid length is the number of selected groups, so the prompt can show the actual range. |
+| Show selected character groups before asking for length | Initially allowed a group-dependent minimum; the later owner request fixed the range at 4–20. |
 | Three failed unlocks per run, with no persistent counter | Fits the local CLI and avoids a new storage mechanism. Restarting can allow more attempts; this is a usability limit, not a security rate limit. |
 | Reset only after `RESET`, master password re-entry, and an uncanceled countdown | Gives the user multiple chances to prevent deletion. Esc during the countdown leaves the vault file intact. |
 | Delete the vault file to reset | On the next run, the existing creation flow asks for a new master password. Filesystem copies and backups are outside this operation. |

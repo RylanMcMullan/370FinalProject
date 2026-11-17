@@ -21,7 +21,47 @@ class CliTests(unittest.TestCase):
             password = _generate()
         self.assertEqual(len(password), 20)
         self.assertIn("Include uppercase letters (A-Z)", prompts[1])
-        self.assertIn("Password length in characters (4-1024", prompts[-1])
+        self.assertIn("Password length in characters (4-20", prompts[-1])
+
+    def test_invalid_length_retries_without_reselecting_groups(self):
+        prompts = []
+        answers = iter(["y", "n", "n", "n", "3", "21", "abc", "4"])
+
+        def answer(prompt):
+            prompts.append(prompt)
+            return next(answers)
+
+        output = StringIO()
+        with patch("builtins.input", side_effect=answer), contextlib.redirect_stdout(output):
+            password = _generate()
+        self.assertEqual(len(password), 4)
+        self.assertTrue(password.islower())
+        self.assertEqual(sum("Include" in prompt for prompt in prompts), 4)
+        self.assertEqual(sum("Password length" in prompt for prompt in prompts), 4)
+        self.assertIn("Enter a whole number from 4 to 20", output.getvalue())
+
+    def test_master_password_setup_retries_mismatch_and_empty_password(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "vault.json"
+            output = StringIO()
+            with patch("password_manager.cli.getpass", side_effect=["first", "different", "", "master", "master"]), \
+                 patch("builtins.input", return_value="6"), \
+                 patch("password_manager.cli._countdown", return_value=True), \
+                 contextlib.redirect_stdout(output):
+                self.assertEqual(main(["--vault", str(path)]), 0)
+            self.assertIn("Passwords did not match. Please try again.", output.getvalue())
+            self.assertIn("Master password cannot be empty. Please try again.", output.getvalue())
+            self.assertEqual(Vault.open(path, "master").entries, [])
+
+    def test_generated_password_when_adding_entry_uses_default_length(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "vault.json"
+            with patch("password_manager.cli.getpass", side_effect=["master", "master", ""]), \
+                 patch("builtins.input", side_effect=["3", "Alex", "alex@example.invalid", "", "", "", "", "", "6"]), \
+                 patch("password_manager.cli._countdown", return_value=True), \
+                 contextlib.redirect_stdout(StringIO()):
+                self.assertEqual(main(["--vault", str(path)]), 0)
+            self.assertEqual(len(Vault.open(path, "master").entries[0]["password"]), 20)
 
     def test_create_add_reopen_and_view(self):
         with tempfile.TemporaryDirectory() as directory:
