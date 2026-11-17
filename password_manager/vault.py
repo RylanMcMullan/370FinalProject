@@ -27,6 +27,10 @@ class VaultError(Exception):
     """Vault data is invalid or cannot be decrypted."""
 
 
+class VaultAuthenticationError(VaultError):
+    """The master password was wrong, or authenticated data was changed."""
+
+
 def _encode(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
@@ -104,7 +108,7 @@ class Vault:
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, RecursionError) as exc:
             raise VaultError("Invalid vault data.") from exc
         except InvalidTag as exc:
-            raise VaultError("Incorrect master password or damaged vault.") from exc
+            raise VaultAuthenticationError("Incorrect master password or damaged vault.") from exc
 
     def add(self, name: str, username: str, password: str) -> None:
         if not name.strip() or not password:

@@ -2,10 +2,26 @@
 
 import argparse
 from getpass import getpass
+import msvcrt
 from pathlib import Path
+import time
 
 from .generator import generate_password
-from .vault import Vault, VaultError
+from .vault import Vault, VaultAuthenticationError, VaultError
+
+
+def _countdown(message: str) -> bool:
+    """Return True when the three-second delay ends; Escape cancels it."""
+    print(f"{message} Press Esc within 3 seconds to cancel.")
+    for remaining in (3, 2, 1):
+        print(f"Closing in {remaining}...")
+        deadline = time.monotonic() + 1
+        while time.monotonic() < deadline:
+            if msvcrt.kbhit() and msvcrt.getwch() == "\x1b":
+                print("Canceled.")
+                return False
+            time.sleep(0.05)
+    return True
 
 
 def _select_entry(vault: Vault) -> int | None:
@@ -27,13 +43,21 @@ def _select_entry(vault: Vault) -> int | None:
 
 def _generate() -> str | None:
     try:
-        length = int(input("Length [20]: ") or "20")
         choices = []
-        for label in ("Lowercase", "Uppercase", "Digits", "Symbols"):
-            answer = input(f"{label}? [Y/n]: ").strip().lower()
+        for label in (
+            "Include lowercase letters (a-z)",
+            "Include uppercase letters (A-Z)",
+            "Include digits (0-9)",
+            "Include symbols (!, @, #, etc.)",
+        ):
+            answer = input(f"{label}? [Y/n, Enter = yes]: ").strip().lower()
             if answer not in ("", "y", "yes", "n", "no"):
                 raise ValueError("Answer y or n for each character group.")
             choices.append(answer not in ("n", "no"))
+        minimum = sum(choices)
+        if not minimum:
+            raise ValueError("Select at least one character group.")
+        length = int(input(f"Password length in characters ({minimum}-1024, Enter = 20): ") or "20")
         return generate_password(length, lowercase=choices[0], uppercase=choices[1],
                                  digits=choices[2], symbols=choices[3])
     except ValueError as exc:
@@ -44,8 +68,8 @@ def _generate() -> str | None:
 def _menu(vault: Vault) -> None:
     while True:
         print("\n1. List entries  2. View entry  3. Add entry  4. Delete entry")
-        print("5. Generate password  6. Lock and exit")
-        choice = input("Choose: ").strip()
+        print("5. Generate password  6. Lock and exit  7. Reset vault")
+        choice = input("Choose a menu number: ").strip()
         if choice == "1":
             if vault.entries:
                 for number, entry in enumerate(vault.entries, 1):
@@ -56,11 +80,11 @@ def _menu(vault: Vault) -> None:
             index = _select_entry(vault)
             if index is not None:
                 entry = vault.entries[index]
-                print(f"Name: {entry['name']}\nUsername: {entry['username']}\nPassword: {entry['password']}")
+                print(f"Entry label: {entry['name']}\nUsername or email: {entry['username']}\nPassword: {entry['password']}")
         elif choice == "3":
-            name = input("Name: ").strip()
-            username = input("Username: ")
-            password = getpass("Password (blank to generate): ")
+            name = input("Entry label (e.g., Email or School): ").strip()
+            username = input("Username or email for this entry: ")
+            password = getpass("Password for this entry (Enter to generate): ")
             if not password:
                 password = _generate()
                 if password is None:
@@ -86,21 +110,59 @@ def _menu(vault: Vault) -> None:
             if password is not None:
                 print(f"Generated password: {password}")
         elif choice == "6":
-            print("Vault locked.")
-            return
+            if _countdown("Vault will lock and close."):
+                print("Goodbye!")
+                return
+        elif choice == "7":
+            print("Reset deletes this vault file, including every saved entry and its master password.")
+            if input("Type RESET to continue, or press Enter to cancel: ") != "RESET":
+                print("Reset canceled.")
+                continue
+            password = getpass("Enter your current master password to authorize reset: ")
+            try:
+                Vault.open(vault.path, password)
+            except VaultAuthenticationError:
+                print("Master password incorrect, or vault data is damaged. Reset canceled.")
+                continue
+            except VaultError as exc:
+                print(f"Reset canceled: {exc}")
+                continue
+            if _countdown("Vault will be reset and close."):
+                try:
+                    vault.path.unlink()
+                except OSError as exc:
+                    print(f"Could not reset vault: {exc}")
+                    continue
+                print("Vault reset. The next launch will ask for a new master password. Goodbye!")
+                return
         else:
-            print("Choose a number from 1 to 6.")
+            print("Choose a number from 1 to 7.")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Local encrypted password manager")
+    parser = argparse.ArgumentParser(
+        description="Local encrypted password manager. Start without options to use vault.json in the current folder.",
+        epilog="Example: password-manager --vault my-demo-vault.json",
+    )
     parser.add_argument("--vault", type=Path, default=Path("vault.json"),
-                        help="vault file path (default: ./vault.json)")
+                        help="path to the encrypted vault file to create or open (default: ./vault.json)")
     args = parser.parse_args(argv)
     try:
         if args.vault.exists():
-            password = getpass("Master password: ")
-            vault = Vault.open(args.vault, password)
+            for attempt in range(1, 4):
+                password = getpass("Master password to unlock this vault: ")
+                try:
+                    vault = Vault.open(args.vault, password)
+                    break
+                except VaultAuthenticationError:
+                    remaining = 3 - attempt
+                    print("Master password incorrect, or vault data is damaged.")
+                    if remaining:
+                        print(f"{remaining} attempt{'s' if remaining != 1 else ''} remaining.")
+                    else:
+                        if not _countdown("No attempts remaining. Vault locked for this run."):
+                            input("Vault remains locked. Press Enter to close.")
+                        return 1
         else:
             print(f"Creating vault: {args.vault}")
             password = getpass("New master password: ")
