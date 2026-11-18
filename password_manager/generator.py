@@ -1,6 +1,6 @@
-"""Password generation using the standard library's cryptographic RNG."""
+"""Password generation utilities."""
 
-import secrets
+import random
 import string
 
 
@@ -27,7 +27,7 @@ def generate_password(
     if length < 4 or length > 20:
         raise ValueError("Password length must be between 4 and 20 characters.")
     alphabet = "".join(groups)
-    chars = [secrets.choice(group) for group in groups]
-    chars.extend(secrets.choice(alphabet) for _ in range(length - len(groups)))
-    secrets.SystemRandom().shuffle(chars)
+    chars = [random.choice(group) for group in groups]
+    chars.extend(random.choice(alphabet) for _ in range(length - len(groups)))
+    random.shuffle(chars)
     return "".join(chars)

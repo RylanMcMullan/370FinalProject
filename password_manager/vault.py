@@ -5,6 +5,7 @@ import binascii
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
 import msvcrt
 import os
@@ -80,20 +81,23 @@ def _file_lock(path: Path):
 
 class Vault:
     def __init__(self, path: Path, key: bytes, salt: bytes, entries: list[dict[str, str]],
-                 fingerprint: bytes | None = None, last_saved_at: str | None = None):
+                 fingerprint: bytes | None = None, last_saved_at: str | None = None,
+                 password_check: str | None = None):
         self.path = Path(path)
         self._key = key
         self._salt = salt
         self.entries = entries
         self._fingerprint = fingerprint
         self.last_saved_at = last_saved_at
+        self._password_check = password_check
 
     @classmethod
     def create(cls, path: Path, password: str) -> "Vault":
         path = Path(path)
         validate_new_master_password(password)
         salt = secrets.token_bytes(SALT_BYTES)
-        vault = cls(path, _key(password, salt), salt, [])
+        vault = cls(path, _key(password, salt), salt, [],
+                    password_check=hashlib.sha256(password.encode("utf-8")).hexdigest())
         data, saved_at = vault._serialize()
         with _file_lock(path):
             # Exclusive creation prevents replacing an existing vault.
@@ -122,7 +126,8 @@ class Vault:
             if len(raw) > 10_000_000:
                 raise VaultError("Vault file is too large.")
             document = json.loads(raw)
-            if not isinstance(document, dict) or set(document) != {"version", "salt", "nonce", "ciphertext"}:
+            expected = {"version", "salt", "nonce", "ciphertext"}
+            if not isinstance(document, dict) or set(document) not in (expected, expected | {"password_check"}):
                 raise VaultError("Invalid vault data.")
             if type(document["version"]) is not int or document["version"] != VERSION:
                 raise VaultError("Unsupported vault version.")
@@ -131,6 +136,13 @@ class Vault:
             ciphertext = _decode(document["ciphertext"])
             if len(salt) != SALT_BYTES or len(nonce) != NONCE_BYTES or len(ciphertext) < 16:
                 raise VaultError("Invalid vault data.")
+            password_check = document.get("password_check")
+            if password_check is not None:
+                if not isinstance(password_check, str) or len(password_check) != 64:
+                    raise VaultError("Invalid vault data.")
+                candidate = hashlib.sha256(password.encode("utf-8")).hexdigest()
+                if not hmac.compare_digest(candidate, password_check):
+                    raise VaultAuthenticationError("Incorrect master password or damaged vault.")
             key = _key(password, salt)
             plaintext = AESGCM(key).decrypt(nonce, ciphertext, AAD)
             payload = json.loads(plaintext)
@@ -153,7 +165,8 @@ class Vault:
             ):
                 raise VaultError("Invalid vault contents.")
             restrict_access(Path(path))
-            return cls(Path(path), key, salt, entries, hashlib.sha256(raw).digest(), saved_at)
+            return cls(Path(path), key, salt, entries, hashlib.sha256(raw).digest(), saved_at,
+                       password_check)
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError, RecursionError) as exc:
             raise VaultError("Invalid vault data.") from exc
         except InvalidTag as exc:
@@ -181,13 +194,14 @@ class Vault:
         """Re-encrypt all entries with a fresh salt after verifying the old password."""
         Vault.open(self.path, current_password)
         validate_new_master_password(new_password)
-        old_key, old_salt = self._key, self._salt
+        old_key, old_salt, old_check = self._key, self._salt, self._password_check
         self._salt = secrets.token_bytes(SALT_BYTES)
         self._key = _key(new_password, self._salt)
+        self._password_check = hashlib.sha256(new_password.encode("utf-8")).hexdigest()
         try:
             self.save()
         except Exception:
-            self._key, self._salt = old_key, old_salt
+            self._key, self._salt, self._password_check = old_key, old_salt, old_check
             raise
 
     def reset(self, current_password: str) -> None:
@@ -205,6 +219,8 @@ class Vault:
         ciphertext = AESGCM(self._key).encrypt(nonce, plaintext, AAD)
         document = {"version": VERSION, "salt": _encode(self._salt),
                     "nonce": _encode(nonce), "ciphertext": _encode(ciphertext)}
+        if self._password_check is not None:
+            document["password_check"] = self._password_check
         return (json.dumps(document, separators=(",", ":")) + "\n").encode("utf-8"), saved_at
 
     def save(self) -> None:
