@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 vault.json
 vault.json.*.tmp
+*vault*.json
+*vault*.json.*.tmp
+*.json.lock
+.lock-wheels/

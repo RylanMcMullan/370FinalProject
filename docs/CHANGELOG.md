@@ -2,6 +2,11 @@
 
 ## 2026-11-17
 
+- Addressed the pasted security review: new-master strength checks, hidden input with idle timeout, screen clearing on exit, master password change, last-saved display, per-user default vault path, Windows ACL restriction, stale-write detection, and hash-checked dependency lock.
+- Fixed empty unlock/reset inputs. Expanded vault-file ignore patterns and removed `yo2.txt` from the working tree.
+- Added 11 security tests; all 28 tests passed. Verified the Scripts `.exe` help, source compilation, the lock hashes, and the example vault ignore rule.
+- Owner selected no automatic migration of existing project-folder vaults and last-saved display instead of a separate rollback warning record.
+- No commit or push made for this security update. The owner committed the preceding usability update as `53e2f0c` (`Implementation #3: Password length and follow ups`).
 - Repeated new master password setup after empty or mismatched entries instead of exiting.
 - Set password generation to 4–20 characters in both menu paths; Enter chooses 20. Invalid lengths now retry without resetting character choices.
 - Changed the entry name prompt and view label to identify it as the user's name, distinct from the login username.

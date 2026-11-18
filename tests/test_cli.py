@@ -1,4 +1,4 @@
-import contextlib
+﻿import contextlib
 from io import StringIO
 from pathlib import Path
 import tempfile
@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 from password_manager.cli import _countdown, _generate, main
 from password_manager.vault import Vault
+
+MASTER = "purple comet river lantern 73"
 
 
 class CliTests(unittest.TestCase):
@@ -44,38 +46,38 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
             output = StringIO()
-            with patch("password_manager.cli.getpass", side_effect=["first", "different", "", "master", "master"]), \
+            with patch("password_manager.cli._secret", side_effect=["first", "", MASTER, "different", MASTER, MASTER]), \
                  patch("builtins.input", return_value="6"), \
                  patch("password_manager.cli._countdown", return_value=True), \
                  contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--vault", str(path)]), 0)
             self.assertIn("Passwords did not match. Please try again.", output.getvalue())
-            self.assertIn("Master password cannot be empty. Please try again.", output.getvalue())
-            self.assertEqual(Vault.open(path, "master").entries, [])
+            self.assertIn("Use at least 12 characters", output.getvalue())
+            self.assertEqual(Vault.open(path, MASTER).entries, [])
 
     def test_generated_password_when_adding_entry_uses_default_length(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            with patch("password_manager.cli.getpass", side_effect=["master", "master", ""]), \
+            with patch("password_manager.cli._secret", side_effect=[MASTER, MASTER, ""]), \
                  patch("builtins.input", side_effect=["3", "Alex", "alex@example.invalid", "", "", "", "", "", "6"]), \
                  patch("password_manager.cli._countdown", return_value=True), \
                  contextlib.redirect_stdout(StringIO()):
                 self.assertEqual(main(["--vault", str(path)]), 0)
-            self.assertEqual(len(Vault.open(path, "master").entries[0]["password"]), 20)
+            self.assertEqual(len(Vault.open(path, MASTER).entries[0]["password"]), 20)
 
     def test_create_add_reopen_and_view(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
             output = StringIO()
             with patch("password_manager.cli._countdown", return_value=True), \
-                 patch("password_manager.cli.getpass", side_effect=["master", "master", "sample-secret"]), \
+                 patch("password_manager.cli._secret", side_effect=[MASTER, MASTER, "sample-secret"]), \
                  patch("builtins.input", side_effect=["3", "Mail", "demo@example.invalid", "6"]), \
                  contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--vault", str(path)]), 0)
-            self.assertEqual(Vault.open(path, "master").entries[0]["password"], "sample-secret")
+            self.assertEqual(Vault.open(path, MASTER).entries[0]["password"], "sample-secret")
             output = StringIO()
             with patch("password_manager.cli._countdown", return_value=True), \
-                 patch("password_manager.cli.getpass", return_value="master"), \
+                 patch("password_manager.cli._secret", return_value=MASTER), \
                  patch("builtins.input", side_effect=["2", "1", "6"]), \
                  contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--vault", str(path)]), 0)
@@ -84,9 +86,9 @@ class CliTests(unittest.TestCase):
     def test_three_wrong_passwords_then_close(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            Vault.create(path, "master")
+            Vault.create(path, MASTER)
             output = StringIO()
-            with patch("password_manager.cli.getpass", side_effect=["wrong", "wrong", "wrong"]), \
+            with patch("password_manager.cli._secret", side_effect=["wrong", "wrong", "wrong"]), \
                  patch("password_manager.cli._countdown", return_value=True) as countdown, \
                  contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--vault", str(path)]), 1)
@@ -96,9 +98,9 @@ class CliTests(unittest.TestCase):
     def test_escape_after_three_wrong_passwords_stays_locked(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            Vault.create(path, "master")
+            Vault.create(path, MASTER)
             output = StringIO()
-            with patch("password_manager.cli.getpass", side_effect=["wrong"] * 3) as password_prompt, \
+            with patch("password_manager.cli._secret", side_effect=["wrong"] * 3) as password_prompt, \
                  patch("password_manager.cli._countdown", return_value=False), \
                  patch("builtins.input", return_value="") as close_prompt, \
                  contextlib.redirect_stdout(output):
@@ -110,8 +112,8 @@ class CliTests(unittest.TestCase):
     def test_reset_requires_confirmation_and_master_password(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            Vault.create(path, "master")
-            with patch("password_manager.cli.getpass", side_effect=["master", "wrong", "master"]), \
+            Vault.create(path, MASTER)
+            with patch("password_manager.cli._secret", side_effect=[MASTER, "wrong", MASTER]), \
                  patch("builtins.input", side_effect=["7", "RESET", "7", "RESET"]), \
                  patch("password_manager.cli._countdown", return_value=True), \
                  contextlib.redirect_stdout(StringIO()):
@@ -125,8 +127,8 @@ class CliTests(unittest.TestCase):
             self.assertFalse(_countdown("Goodbye!"))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            Vault.create(path, "master")
-            with patch("password_manager.cli.getpass", side_effect=["master", "master"]), \
+            Vault.create(path, MASTER)
+            with patch("password_manager.cli._secret", side_effect=[MASTER, MASTER]), \
                  patch("builtins.input", side_effect=["7", "RESET", "6"]), \
                  patch("password_manager.cli._countdown", side_effect=[False, True]), \
                  contextlib.redirect_stdout(StringIO()):
@@ -136,8 +138,8 @@ class CliTests(unittest.TestCase):
     def test_escape_cancels_lock_and_exit(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "vault.json"
-            Vault.create(path, "master")
-            with patch("password_manager.cli.getpass", return_value="master"), \
+            Vault.create(path, MASTER)
+            with patch("password_manager.cli._secret", return_value=MASTER), \
                  patch("builtins.input", side_effect=["6", "6"]), \
                  patch("password_manager.cli._countdown", side_effect=[False, True]) as countdown, \
                  contextlib.redirect_stdout(StringIO()):

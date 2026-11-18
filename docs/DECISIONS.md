@@ -1,5 +1,19 @@
 # Decisions
 
+## 2026-11-17 — Security review implementation
+
+The owner requested fixes for the pasted findings. The owner then chose to leave existing project-folder vaults in place and show the authenticated last-saved time without a separate rollback warning record. Those choices do not establish rollback protection. No approval for a Git commit or push was given.
+
+| Choice | Rationale and limit |
+| --- | --- |
+| Require 12 characters and `zxcvbn` score of at least 3 for newly set master passwords | Rejects short and obvious choices without a network breach lookup. Existing weak vaults can still be opened and upgraded. A strength estimator cannot guarantee resistance to guessing. |
+| Use Windows console key input with a five-minute idle timeout | Avoids `getpass` echo fallback and closes idle sessions. A nonterminal password prompt fails closed; this Windows-focused implementation is not portable to other operating systems. |
+| Clear the console on lock and reset | Reduces exposure of displayed passwords; terminal scrollback or captures may persist. |
+| Store `saved_at` inside authenticated payload, retaining support for older payloads | Shows when the file claims it was last saved. Restored old copies remain valid; this is not rollback detection. |
+| Default new vaults to `%LOCALAPPDATA%` and replace Windows DACLs with the Win32 security API | Avoids creating new vaults in a public repository or shared launch folder. Existing `./vault.json` stays in place as requested and receives a protected file ACL after successful unlock. |
+| Use a Windows lock file plus a content fingerprint on write | Prevents two live sessions from silently overwriting each other's saved changes. |
+| Pin direct dependencies and provide a hash-checked Windows/Python 3.14 runtime lock | Reproducible runtime install on the tested platform; other Python/platform combinations need their own lock. |
+
 ## 2026-11-17 — Follow-up usability fixes
 
 The owner explicitly requested these interface changes on 2026-11-17. No cryptographic design change was requested or made.

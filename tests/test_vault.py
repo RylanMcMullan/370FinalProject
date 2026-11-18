@@ -1,9 +1,11 @@
-import json
+﻿import json
 from pathlib import Path
 import tempfile
 import unittest
 
 from password_manager.vault import Vault, VaultError
+
+MASTER = "purple comet river lantern 73"
 
 
 class VaultTests(unittest.TestCase):
@@ -24,25 +26,25 @@ class VaultTests(unittest.TestCase):
         self.assertEqual(Vault.open(self.path, "correct horse battery staple").entries, [])
 
     def test_wrong_password_and_tampering(self):
-        Vault.create(self.path, "master")
+        Vault.create(self.path, MASTER)
         with self.assertRaisesRegex(VaultError, "Incorrect master password or damaged vault"):
             Vault.open(self.path, "wrong")
         document = json.loads(self.path.read_text())
         document["ciphertext"] = document["ciphertext"][:-4] + "AAAA"
         self.path.write_text(json.dumps(document))
         with self.assertRaises(VaultError):
-            Vault.open(self.path, "master")
+            Vault.open(self.path, MASTER)
 
     def test_invalid_format_and_exclusive_creation(self):
-        Vault.create(self.path, "master")
+        Vault.create(self.path, MASTER)
         with self.assertRaises(FileExistsError):
-            Vault.create(self.path, "new master")
+            Vault.create(self.path, "another purple comet river lantern 84")
         self.path.write_text("not json")
         with self.assertRaises(VaultError):
-            Vault.open(self.path, "master")
+            Vault.open(self.path, MASTER)
 
     def test_save_uses_fresh_nonce(self):
-        vault = Vault.create(self.path, "master")
+        vault = Vault.create(self.path, MASTER)
         first = json.loads(self.path.read_text())["nonce"]
         vault.save()
         second = json.loads(self.path.read_text())["nonce"]
