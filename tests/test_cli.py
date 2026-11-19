@@ -21,9 +21,9 @@ class CliTests(unittest.TestCase):
 
         with patch("builtins.input", side_effect=answer):
             password = _generate()
-        self.assertEqual(len(password), 20)
+        self.assertEqual(len(password), 6)
         self.assertIn("Include uppercase letters (A-Z)", prompts[1])
-        self.assertIn("Password length in characters (4-20", prompts[-1])
+        self.assertIn("Password length in characters (4-20, Enter = 6)", prompts[-1])
 
     def test_invalid_length_retries_without_reselecting_groups(self):
         prompts = []
@@ -40,7 +40,7 @@ class CliTests(unittest.TestCase):
         self.assertTrue(password.islower())
         self.assertEqual(sum("Include" in prompt for prompt in prompts), 4)
         self.assertEqual(sum("Password length" in prompt for prompt in prompts), 4)
-        self.assertIn("Enter a whole number from 4 to 20", output.getvalue())
+        self.assertIn("Enter a whole number from 4 to 20, or press Enter for 6", output.getvalue())
 
     def test_master_password_setup_retries_mismatch_and_empty_password(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -52,7 +52,7 @@ class CliTests(unittest.TestCase):
                  contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--vault", str(path)]), 0)
             self.assertIn("Passwords did not match. Please try again.", output.getvalue())
-            self.assertIn("Use at least 12 characters", output.getvalue())
+            self.assertIn("Use at least 6 characters", output.getvalue())
             self.assertEqual(Vault.open(path, MASTER).entries, [])
 
     def test_generated_password_when_adding_entry_uses_default_length(self):
@@ -63,7 +63,7 @@ class CliTests(unittest.TestCase):
                  patch("password_manager.cli._countdown", return_value=True), \
                  contextlib.redirect_stdout(StringIO()):
                 self.assertEqual(main(["--vault", str(path)]), 0)
-            self.assertEqual(len(Vault.open(path, MASTER).entries[0]["password"]), 20)
+            self.assertEqual(len(Vault.open(path, MASTER).entries[0]["password"]), 6)
 
     def test_create_add_reopen_and_view(self):
         with tempfile.TemporaryDirectory() as directory:

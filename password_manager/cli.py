@@ -118,11 +118,11 @@ def _generate() -> str | None:
         print(exc)
         return None
     while True:
-        answer = _input("Password length in characters (4-20, Enter = 20): ").strip()
+        answer = _input("Password length in characters (4-20, Enter = 6): ").strip()
         try:
-            length = int(answer) if answer else 20
+            length = int(answer) if answer else 6
         except ValueError:
-            print("Enter a whole number from 4 to 20, or press Enter for 20.")
+            print("Enter a whole number from 4 to 20, or press Enter for 6.")
             continue
         try:
             return generate_password(length, lowercase=choices[0], uppercase=choices[1],
@@ -208,7 +208,7 @@ def _menu(vault: Vault) -> None:
             if not current:
                 print("Current master password cannot be empty.")
                 continue
-            new = _secret("New master password (at least 12 characters): ")
+            new = _secret("New master password (at least 6 characters): ")
             try:
                 validate_new_master_password(new)
             except ValueError as exc:
@@ -263,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
                 restrict_access(path.parent)
             print(f"Creating vault: {path}")
             while True:
-                password = _secret("New master password (at least 12 characters): ")
+                password = _secret("New master password (at least 6 characters): ")
                 try:
                     validate_new_master_password(password)
                 except ValueError as exc:

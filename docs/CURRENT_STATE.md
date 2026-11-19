@@ -1,6 +1,6 @@
 # Current State
 
-Updated: 2026-11-17
+Updated: 2026-11-18
 
 ## Implemented
 
@@ -9,11 +9,11 @@ Updated: 2026-11-17
 - Saves after add/delete use a temporary file and atomic replacement. Initial creation refuses to overwrite an existing file.
 - Automated tests cover vault persistence, wrong passwords, tampering, invalid formats, exclusive creation, fresh nonces, generator settings, and a CLI create/reopen flow.
 - CLI prompts distinguish the user's name from the login username, explain generated password settings, and describe the vault path option. New master password setup repeats after empty or mismatched input.
-- Both password generation flows use a fixed 4–20 character range with Enter selecting 20. Invalid lengths prompt again without clearing selected character groups.
+- Both password generation flows use a fixed 4–20 character range with Enter selecting 6. The Python generator also defaults to 6. Invalid lengths prompt again without clearing selected character groups.
 - Unlock allows three attempts per run. After the third failure, the app shows a three-second close countdown; Esc stops automatic closing, but the vault stays locked until the user closes it manually.
 - An authenticated user can reset the vault by choosing menu option 7, typing `RESET`, re-entering the master password, and letting the three-second countdown finish. Esc during the countdown cancels reset. Successful reset deletes the vault file, so the next launch creates a new vault.
 - Lock and exit uses the same three-second countdown and can be canceled with Esc.
-- New master passwords require at least 12 characters and pass the local `zxcvbn` strength check. Older vaults remain unlockable so existing data is not stranded. Menu option 8 changes the master password and re-encrypts entries with a fresh salt.
+- New master passwords require 6–1024 characters; there is no strength-score requirement. This deliberately weak test policy permits easily guessed passwords and is suitable only for synthetic credentials. Menu option 8 changes the master password and re-encrypts entries with a fresh salt.
 - Password input requires a real Windows terminal and does not echo. Keyboard input times out after five minutes of inactivity; closing or locking clears the console screen where supported.
 - New default vaults use `%LOCALAPPDATA%\LocalPasswordManager\vault.json`. Windows ACLs are replaced with a protected grant for the current user. An existing `./vault.json` remains in place and is opened by default. `--vault` still selects an explicit file.
 - Each save and reset checks that the vault has not changed since this session opened it; a Windows lock file serializes writes. Unlock displays the authenticated last-saved time when available.
@@ -21,7 +21,7 @@ Updated: 2026-11-17
 
 ## Verified checks
 
-- `python -m unittest discover -s tests -q` passed: 28 tests using `.venv`.
+- `python -m unittest discover -s tests -q` passed: 30 tests using `.venv`, including both six-character generation defaults.
 - `python -m password_manager --help` succeeded using `.venv`.
 - `.venv\Scripts\password-manager.exe --help` succeeded.
 - `python -m compileall -q password_manager tests` succeeded using `.venv`.
@@ -38,6 +38,7 @@ Updated: 2026-11-17
 - An older copied vault can still be restored and opened. Last-saved time is informational and cannot prove that a file is the newest copy.
 - The three-attempt limit is local to one run; restarting allows another set of attempts. Deleting the vault file does not securely erase filesystem history or backups.
 - Changing the master password does not invalidate older vault copies encrypted under the previous master password.
+- Short, memorable master passwords can be guessed offline from a copied vault despite Argon2id. The three-attempt menu limit does not protect against this.
 - GitHub branch protection and collaborator access have not been changed; the GitHub integration is not connected in this session.
 
 ## Next steps

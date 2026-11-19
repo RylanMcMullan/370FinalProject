@@ -1,5 +1,13 @@
 # Decisions
 
+## 2026-11-18 — Generated password default
+
+The owner requested that Enter select six characters in both standalone generation and generation while adding an entry. Both menus use the same `_generate` function, and the Python `generate_password()` default is also six. The allowed generated-password length remains 4–20. This choice is for synthetic testing; a six-character generated password has substantially fewer possible values than a longer one. No Git commit or push was authorized.
+
+## 2026-11-18 — Synthetic test master password policy
+
+The owner explicitly requested a six-character, memorable master password for testing and authorized lowering the minimum. New master passwords now require 6–1024 characters without a strength-score gate. This allows the same simple value for vault creation and menu option 8. Argon2id and AES-256-GCM parameters were not changed. This weaker policy is for the repository's synthetic demonstration credentials; a copied vault with a short word-based master password can be guessed offline. No Git commit or push was authorized.
+
 ## 2026-11-17 — Security review implementation
 
 The owner requested fixes for the pasted findings. The owner then chose to leave existing project-folder vaults in place and show the authenticated last-saved time without a separate rollback warning record. Those choices do not establish rollback protection. No approval for a Git commit or push was given.

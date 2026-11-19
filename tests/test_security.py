@@ -17,7 +17,7 @@ from password_manager.vault import AAD, Vault, VaultAuthenticationError, VaultEr
 
 
 MASTER = "purple comet river lantern 73"
-NEW_MASTER = "copper meadow sunrise orbit 84"
+NEW_MASTER = "t3stMe"
 
 
 class SecurityTests(unittest.TestCase):
@@ -26,11 +26,19 @@ class SecurityTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "demo-vault.json"
 
-    def test_new_master_rejects_short_and_guessable_passwords(self):
-        for password in ("a", "password123456", "passwordpassword"):
+    def test_new_master_requires_at_least_six_characters(self):
+        for password in ("", "a", "first"):
             with self.subTest(password=password), self.assertRaises(ValueError):
                 Vault.create(self.path, password)
             self.assertFalse(self.path.exists())
+
+    def test_six_character_example_works_for_create_unlock_and_change(self):
+        vault = Vault.create(self.path, "t3stMe")
+        self.assertEqual(Vault.open(self.path, "t3stMe").entries, [])
+        vault.change_master_password("t3stMe", "d3moMe")
+        with self.assertRaises(VaultAuthenticationError):
+            Vault.open(self.path, "t3stMe")
+        self.assertEqual(Vault.open(self.path, "d3moMe").entries, [])
 
     def test_weak_older_vault_can_still_be_opened(self):
         salt = secrets.token_bytes(16)

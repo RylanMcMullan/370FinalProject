@@ -5,7 +5,7 @@ import string
 
 
 def generate_password(
-    length: int = 20,
+    length: int = 6,
     *,
     lowercase: bool = True,
     uppercase: bool = True,

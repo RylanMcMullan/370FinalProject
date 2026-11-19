@@ -6,4 +6,3 @@ argon2-cffi-bindings==26.2.0 --hash=sha256:d2d4ae065e7cce4b286d3eb7c59128bfd11f8
 cffi==2.1.1 --hash=sha256:3222ba5d678f80a030e6afbcc33dc1ae5cb45facabb61cee2c7016b8432fde48
 cryptography==46.0.7 --hash=sha256:397655da831414d165029da9bc483bed2fe0e75dde6a1523ec2fe63f3c46046b
 pycparser==3.12 --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e
-zxcvbn==4.5.0 --hash=sha256:2b6eed621612ce6d65e6e4c7455b966acee87d0280e257956b1f06ccc66bd5ff

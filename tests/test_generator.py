@@ -5,6 +5,9 @@ from password_manager.generator import generate_password
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_default_length(self):
+        self.assertEqual(len(generate_password()), 6)
+
     def test_length_and_each_selected_group(self):
         password = generate_password(20)
         self.assertEqual(len(password), 20)

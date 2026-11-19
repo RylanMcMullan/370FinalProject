@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-18
+
+- Changed the shared generated-password default from 20 to 6 characters while retaining the 4–20 range; updated prompts and tests for both menu paths.
+- At the owner's request for synthetic testing, changed new-master validation to a 6–1024 character length check and removed the blocking strength score.
+- Updated creation and change prompts, removed the unused `zxcvbn` runtime dependency and lock entry, and verified six-character create/unlock/change behavior.
+- All 30 automated tests passed after the generated-password default change; source compilation succeeded. No commit or push made.
+
 ## 2026-11-17
 
 - Addressed the pasted security review: new-master strength checks, hidden input with idle timeout, screen clearing on exit, master password change, last-saved display, per-user default vault path, Windows ACL restriction, stale-write detection, and hash-checked dependency lock.
